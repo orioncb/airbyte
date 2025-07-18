@@ -14,6 +14,7 @@ import io.airbyte.cdk.load.toolkits.iceberg.parquet.io.IcebergUtil
 import io.airbyte.cdk.load.write.StreamLoader
 import io.airbyte.cdk.load.write.StreamStateStore
 import io.airbyte.integrations.destination.s3_data_lake.io.S3DataLakeUtil
+import io.airbyte.integrations.destination.s3_data_lake.S3DataLakeSpecification
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.apache.iceberg.Schema
 import org.apache.iceberg.Table
@@ -42,7 +43,12 @@ class S3DataLakeStreamLoader(
         } else {
             ColumnTypeChangeBehavior.SAFE_SUPERTYPE
         }
-    private val incomingSchema = icebergUtil.toIcebergSchema(stream = stream)
+    private val incomingSchema =
+        icebergUtil.toIcebergSchema(
+            stream = stream,
+            metaStorageString = icebergConfiguration.metaStorage == S3DataLakeSpecification.MetaStorage.STRING,
+            metaNullable = icebergConfiguration.metaNullable,
+        )
 
     @SuppressFBWarnings(
         "RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE",

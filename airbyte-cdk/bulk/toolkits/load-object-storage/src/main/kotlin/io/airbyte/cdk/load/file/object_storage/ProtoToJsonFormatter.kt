@@ -17,11 +17,18 @@ import java.io.OutputStream
 class ProtoToJsonFormatter(
     stream: DestinationStream,
     private val outputStream: OutputStream,
-    rootLevelFlattening: Boolean
+    rootLevelFlattening: Boolean,
+    metaStorageString: Boolean = false,
+    metaNullable: Boolean = false,
 ) : ObjectStorageFormattingWriter {
 
     private val fastWriter =
-        ProtoToJsonWriter(stream.airbyteValueProxyFieldAccessors, rootLevelFlattening)
+        ProtoToJsonWriter(
+            stream.airbyteValueProxyFieldAccessors,
+            rootLevelFlattening,
+            metaStorageString,
+            metaNullable,
+        )
     private val unknownColumnChanges =
         stream.schema.collectUnknownPaths().map {
             Meta.Change(

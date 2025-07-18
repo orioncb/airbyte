@@ -18,7 +18,9 @@ import java.math.BigInteger
 
 class ProtoToJsonWriter(
     private val columns: Array<AirbyteValueProxy.FieldAccessor>,
-    private val flatten: Boolean
+    private val flatten: Boolean,
+    private val metaStorageString: Boolean = false,
+    private val metaNullable: Boolean = false,
 ) {
 
     fun writeMeta(gen: JsonGenerator, record: DestinationRecordRaw, changes: List<Meta.Change>) =
@@ -26,24 +28,43 @@ class ProtoToJsonWriter(
             writeStringField(COLUMN_NAME_AB_RAW_ID, record.airbyteRawId.toString())
             writeNumberField(COLUMN_NAME_AB_EXTRACTED_AT, record.rawData.emittedAtMs)
 
-            // _airbyte_meta
-            writeFieldName(COLUMN_NAME_AB_META)
-            writeStartObject()
-            writeNumberField("sync_id", record.stream.syncId)
-
-            writeFieldName("changes")
-            writeStartArray()
-            for (c in changes) {
+            if (metaStorageString) {
+                if (metaNullable && changes.isEmpty()) writeNullField(COLUMN_NAME_AB_META)
+                else writeStringField(COLUMN_NAME_AB_META, buildMetaString(record.stream.syncId, changes))
+            } else {
+                writeFieldName(COLUMN_NAME_AB_META)
                 writeStartObject()
-                writeStringField("field", c.field)
-                writeStringField("change", c.change.name)
-                writeStringField("reason", c.reason.name)
-                writeEndObject()
+                writeNumberField("sync_id", record.stream.syncId)
+
+                writeFieldName("changes")
+                writeStartArray()
+                for (c in changes) {
+                    writeStartObject()
+                    writeStringField("field", c.field)
+                    writeStringField("change", c.change.name)
+                    writeStringField("reason", c.reason.name)
+                    writeEndObject()
+                }
+                writeEndArray()
+                writeEndObject() // _airbyte_meta
             }
-            writeEndArray()
-            writeEndObject() // _airbyte_meta
 
             writeNumberField(COLUMN_NAME_AB_GENERATION_ID, record.stream.generationId)
+        }
+
+    private fun buildMetaString(syncId: Long, changes: List<Meta.Change>): String =
+        buildString(64) {
+            append('{')
+            append("\"sync_id\":").append(syncId).append(',')
+            append("\"changes\":[")
+            changes.forEachIndexed { idx, c ->
+                append('{')
+                append("\"field\":\"").append(c.field).append("\",")
+                append("\"change\":\"").append(c.change.name).append("\",")
+                append("\"reason\":\"").append(c.reason.name).append("\"}")
+                if (idx != changes.lastIndex) append(',')
+            }
+            append("]}")
         }
 
     fun writePayload(gen: JsonGenerator, src: DestinationRecordProtobufSource) {

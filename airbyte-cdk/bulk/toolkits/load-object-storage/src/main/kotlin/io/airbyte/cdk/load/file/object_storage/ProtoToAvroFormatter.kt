@@ -51,12 +51,18 @@ class ProtoToAvroFormatter(
     outputStream: OutputStream,
     formatConfig: AvroFormatConfiguration,
     private val rootLevelFlattening: Boolean,
+    private val metaStorageString: Boolean = false,
+    private val metaNullable: Boolean = false,
 ) : ObjectStorageFormattingWriter {
     private val longMin = Long.MIN_VALUE.toBigInteger()
     private val longMax = Long.MAX_VALUE.toBigInteger()
 
     private val logicalSchema: ObjectType =
-        mergeUnions(stream.schema).withAirbyteMeta(rootLevelFlattening)
+        mergeUnions(stream.schema).withAirbyteMeta(
+            rootLevelFlattening,
+            metaStorage = if (metaStorageString) MetaStorage.STRING else MetaStorage.OBJECT,
+            metaNullable = metaNullable,
+        )
     private val avroSchema: Schema = logicalSchema.toAvroSchema(stream.mappedDescriptor)
     private val writer =
         outputStream.toAvroWriter(avroSchema, formatConfig.avroCompressionConfiguration)
@@ -65,8 +71,8 @@ class ProtoToAvroFormatter(
 
     // meta
     private val metaSchema = avroSchema.nonNullSubSchemaOf(safe(Meta.COLUMN_NAME_AB_META))
-    private val changeArraySchema = metaSchema.getField("changes").schema().nonNullOrSelf()
-    private val changeRecordSchema = changeArraySchema.elementType.nonNullOrSelf()
+    private val changeArraySchema = metaSchema.takeIf { it.type == Schema.Type.RECORD }?.getField("changes")?.schema()?.nonNullOrSelf()
+    private val changeRecordSchema = changeArraySchema?.elementType?.nonNullOrSelf()
 
     // column table
     private data class ColumnWriter(
@@ -438,13 +444,17 @@ class ProtoToAvroFormatter(
         return null
     }
 
-    private fun buildMeta(syncId: Long, changes: List<Meta.Change>): GenericRecord {
+    private fun buildMeta(syncId: Long, changes: List<Meta.Change>): Any? {
+        if (metaStorageString) {
+            if (metaNullable && changes.isEmpty()) return null
+            return buildMetaString(syncId, changes)
+        }
         val meta = GenericData.Record(metaSchema)
         meta.put("sync_id", syncId)
 
-        val array = GenericData.Array<GenericRecord>(changes.size, changeArraySchema)
+        val array = GenericData.Array<GenericRecord>(changes.size, changeArraySchema!!)
         changes.forEach { c ->
-            val rec = GenericData.Record(changeRecordSchema)
+            val rec = GenericData.Record(changeRecordSchema!!)
             rec.put("field", c.field)
             rec.put("change", c.change.name)
             rec.put("reason", c.reason.name)
@@ -453,6 +463,21 @@ class ProtoToAvroFormatter(
         meta.put("changes", array)
         return meta
     }
+
+    private fun buildMetaString(syncId: Long, changes: List<Meta.Change>): String =
+        buildString(64) {
+            append('{')
+            append("\"sync_id\":").append(syncId).append(',')
+            append("\"changes\":[")
+            changes.forEachIndexed { idx, c ->
+                append('{')
+                append("\"field\":\"").append(c.field).append("\",")
+                append("\"change\":\"").append(c.change.name).append("\",")
+                append("\"reason\":\"").append(c.reason.name).append("\"}")
+                if (idx != changes.lastIndex) append(',')
+            }
+            append("]}")
+        }
 
     private fun matchingAvroType(airbyteSchema: AirbyteType, avroUnion: Schema): Schema? =
         when (airbyteSchema) {

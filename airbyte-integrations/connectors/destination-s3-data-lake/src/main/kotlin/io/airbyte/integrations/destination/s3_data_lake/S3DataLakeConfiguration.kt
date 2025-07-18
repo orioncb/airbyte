@@ -24,6 +24,8 @@ data class S3DataLakeConfiguration(
     override val awsAccessKeyConfiguration: AWSAccessKeyConfiguration,
     override val s3BucketConfiguration: S3BucketConfiguration,
     override val icebergCatalogConfiguration: IcebergCatalogConfiguration,
+    val metaStorage: S3DataLakeSpecification.MetaStorage = S3DataLakeSpecification.MetaStorage.OBJECT,
+    val metaNullable: Boolean = false,
     // Now that partitioning is enabled, we can run more than one worker.
     // This will likely not show performance improvements in the cloud without additional
     // resources. In the future, if enterprise or oss users need more flexibility, we can
@@ -46,6 +48,8 @@ class S3DataLakeConfigurationFactory :
             awsAccessKeyConfiguration = pojo.toAWSAccessKeyConfiguration(),
             s3BucketConfiguration = pojo.toS3BucketConfiguration(),
             icebergCatalogConfiguration = pojo.toIcebergCatalogConfiguration(),
+            metaStorage = pojo.metaStorage,
+            metaNullable = pojo.metaNullable,
         )
     }
 }

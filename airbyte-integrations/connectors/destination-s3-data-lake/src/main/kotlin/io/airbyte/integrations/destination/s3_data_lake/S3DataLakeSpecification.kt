@@ -8,6 +8,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyDescription
 import com.kjetland.jackson.jsonSchema.annotations.JsonSchemaDescription
 import com.kjetland.jackson.jsonSchema.annotations.JsonSchemaInject
 import com.kjetland.jackson.jsonSchema.annotations.JsonSchemaTitle
+import com.fasterxml.jackson.annotation.JsonValue
 import io.airbyte.cdk.command.ConfigurationSpecification
 import io.airbyte.cdk.load.command.aws.AWSAccessKeySpecification
 import io.airbyte.cdk.load.command.iceberg.parquet.CatalogType
@@ -71,6 +72,21 @@ class S3DataLakeSpecification :
 
     @get:JsonSchemaInject(json = """{"always_show": true,"order":7}""")
     override val catalogType: CatalogType = GlueCatalogSpecification(glueId = "", databaseName = "")
+
+    enum class MetaStorage(@get:JsonValue val value: String) {
+        OBJECT("object"),
+        STRING("string"),
+    }
+
+    @get:JsonSchemaTitle("_airbyte_meta Storage")
+    @get:JsonPropertyDescription("Store the _airbyte_meta column as an object or a JSON string.")
+    @get:JsonSchemaInject(json = """{"order":8,"default":"object"}""")
+    val metaStorage: MetaStorage = MetaStorage.OBJECT
+
+    @get:JsonSchemaTitle("Nullable _airbyte_meta")
+    @get:JsonPropertyDescription("Allow null values in the _airbyte_meta column.")
+    @get:JsonSchemaInject(json = """{"order":9,"default":false}""")
+    val metaNullable: Boolean = false
 }
 
 @Singleton

@@ -75,4 +75,24 @@ internal class AirbyteTypeToAirbyteTypeWithMetaTest {
         schema.properties.forEach { (name, field) -> expected.properties[name] = field }
         assertEquals(expected, withMeta)
     }
+
+    @Test
+    fun testStringMetaNullable() {
+        val schema = ObjectType(emptyMap())
+        val withMeta = schema.withAirbyteMeta(
+            flatten = true,
+            metaStorage = MetaStorage.STRING,
+            metaNullable = true,
+        )
+        val expected =
+            ObjectType(
+                linkedMapOf(
+                    Meta.COLUMN_NAME_AB_RAW_ID to FieldType(StringType, nullable = false),
+                    Meta.COLUMN_NAME_AB_EXTRACTED_AT to FieldType(IntegerType, nullable = false),
+                    Meta.COLUMN_NAME_AB_META to FieldType(StringType, nullable = true),
+                    Meta.COLUMN_NAME_AB_GENERATION_ID to FieldType(IntegerType, nullable = false),
+                )
+            )
+        assertEquals(expected, withMeta)
+    }
 }

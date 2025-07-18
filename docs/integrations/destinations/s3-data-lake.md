@@ -15,6 +15,8 @@ The S3 Data Lake connector requires two things.
     - AWS Glue
     - Nessie
 
+The destination exposes advanced options to control how the `_airbyte_meta` column is stored. Set `meta_storage` to `"string"` to store the metadata as a JSON string instead of an object, and `meta_nullable` to `true` to allow null values.
+
 ## Setup guide
 
 Follow these steps to set up your S3 storage and Iceberg catalog permissions.

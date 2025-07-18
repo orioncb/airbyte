@@ -22,6 +22,7 @@ import io.airbyte.cdk.load.data.NumberValue
 import io.airbyte.cdk.load.data.ObjectType
 import io.airbyte.cdk.load.data.ObjectTypeWithEmptySchema
 import io.airbyte.cdk.load.data.ObjectTypeWithoutSchema
+import io.airbyte.cdk.load.data.MetaStorage
 import io.airbyte.cdk.load.data.StringValue
 import io.airbyte.cdk.load.data.UnionType
 import io.airbyte.cdk.load.data.UnknownType
@@ -230,13 +231,23 @@ class IcebergUtil(private val tableIdGenerator: TableIdGenerator) {
         }
     }
 
-    fun toIcebergSchema(stream: DestinationStream): Schema {
+    fun toIcebergSchema(
+        stream: DestinationStream,
+        metaStorageString: Boolean = false,
+        metaNullable: Boolean = false,
+    ): Schema {
         val primaryKeys =
             when (stream.importType) {
                 is Dedupe -> (stream.importType as Dedupe).primaryKey
                 else -> emptyList()
             }
-        return stream.schema.withAirbyteMeta(true).toIcebergSchema(primaryKeys)
+        return stream.schema
+            .withAirbyteMeta(
+                flatten = true,
+                metaStorage = if (metaStorageString) MetaStorage.STRING else MetaStorage.OBJECT,
+                metaNullable = metaNullable,
+            )
+            .toIcebergSchema(primaryKeys)
     }
 
     private fun getSortOrder(schema: Schema): SortOrder {
