@@ -81,7 +81,7 @@ class S3DataLakeDirectLoader(
         val enrichedRecordAirbyteValue = record.asEnrichedDestinationRecordAirbyteValue()
 
         val icebergRecord =
-            icebergUtil.toRecord(
+            icebergUtil.toRecordWithMetaAsString(
                 record = enrichedRecordAirbyteValue,
                 stream = stream,
                 tableSchema = schema,
